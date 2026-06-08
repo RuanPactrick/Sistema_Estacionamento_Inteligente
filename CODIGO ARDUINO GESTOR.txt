@@ -1,0 +1,90 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+int vagasOcupadas = 0;
+
+// NOVOS PINOS DOS LEDS DAS PORTAS
+int pinoLedEntrada = 12; 
+int pinoLedSaida = 11;
+
+void setup() {
+  Serial.begin(9600); 
+  
+  // Configura os leds das vagas (2 a 10)
+  for (int pino = 2; pino <= 10; pino++) {
+    pinMode(pino, OUTPUT);
+    digitalWrite(pino, LOW); 
+  }
+
+  // Configura os novos LEDs indicadores das portas
+  pinMode(pinoLedEntrada, OUTPUT);
+  pinMode(pinoLedSaida, OUTPUT);
+  digitalWrite(pinoLedEntrada, LOW);
+  digitalWrite(pinoLedSaida, LOW);
+
+  lcd.init();
+  lcd.backlight();
+  atualizarEcra();
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    char mensagem = Serial.read(); 
+    
+    // --- Comandos da Entrada ---
+    if (mensagem == 'E') {
+      digitalWrite(pinoLedEntrada, HIGH); // Acende o LED indicador
+      if (vagasOcupadas < 9) {
+        vagasOcupadas++;
+        atualizarLuzesEEcra();
+      }
+    }
+    else if (mensagem == 'e') {
+      digitalWrite(pinoLedEntrada, LOW);  // Apaga o LED indicador
+    }
+    
+    // --- Comandos da Saída ---
+    if (mensagem == 'S') {
+      digitalWrite(pinoLedSaida, HIGH);  // Acende o LED indicador
+      if (vagasOcupadas > 0) {
+        vagasOcupadas--;
+        atualizarLuzesEEcra();
+      }
+    }
+    else if (mensagem == 's') {
+      digitalWrite(pinoLedSaida, LOW);   // Apaga o LED indicador
+    }
+  }
+}
+
+void atualizarLuzesEEcra() {
+  for (int pino = 2; pino <= 10; pino++) {
+    int numeroDoLed = pino - 1;
+    if (numeroDoLed <= vagasOcupadas) {
+      digitalWrite(pino, HIGH); 
+    } else {
+      digitalWrite(pino, LOW);  
+    }
+  }
+  atualizarEcra();
+}
+
+void atualizarEcra() {
+  int vagasLivres = 9 - vagasOcupadas;
+  
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Vagas Livres: ");
+  lcd.print(vagasLivres);
+  
+  lcd.setCursor(0, 1);
+  if (vagasLivres == 0) {
+    lcd.print("PARQUE LOTADO");
+    Serial.print('L'); 
+  } else {
+    lcd.print("BEM-VINDO!");
+    Serial.print('V'); 
+  }
+}

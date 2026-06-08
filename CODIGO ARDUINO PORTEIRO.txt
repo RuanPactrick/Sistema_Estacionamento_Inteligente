@@ -1,0 +1,84 @@
+// C++ code
+#include <Servo.h>
+
+Servo cancelaEntrada; // Usando os componentes de Cima para Entrada
+Servo cancelaSaida;   // Usando os componentes de Baixo para Saída
+
+// Pinos exatos da sua montagem
+int pinoSensorEntrada = 3;
+int pinoMotorEntrada = 5;
+int pinoSensorSaida = 2;
+int pinoMotorSaida = 4;
+
+bool parqueLotado = false; 
+bool carroAtualNaEntrada = false;
+bool carroAtualNaSaida = false;
+
+void setup() {
+  Serial.begin(9600); 
+  cancelaEntrada.attach(pinoMotorEntrada);
+  cancelaSaida.attach(pinoMotorSaida);
+  cancelaEntrada.write(0); 
+  cancelaSaida.write(0);
+}
+
+long lerDistancia(int pino) {
+  pinMode(pino, OUTPUT);
+  digitalWrite(pino, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pino, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(pino, LOW);
+  pinMode(pino, INPUT);
+  return pulseIn(pino, HIGH) / 29 / 2;
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    char mensagemDoGestor = Serial.read();
+    if (mensagemDoGestor == 'L') {
+      parqueLotado = true;  
+    } else if (mensagemDoGestor == 'V') {
+      parqueLotado = false; 
+    }
+  }
+
+  long distEntrada = lerDistancia(pinoSensorEntrada);
+  long distSaida = lerDistancia(pinoSensorSaida);
+  
+  // LÓGICA DA ENTRADA
+  if (distEntrada > 0 && distEntrada < 50) {
+    if (!carroAtualNaEntrada && !parqueLotado) {
+      cancelaEntrada.write(90);    
+      Serial.print('E');           // LIGA LED ENTRADA (e conta vaga)
+      carroAtualNaEntrada = true;  
+    }
+  } 
+  else {
+    if (carroAtualNaEntrada) {
+      delay(1000);                 
+      cancelaEntrada.write(0);     
+      Serial.print('e');           // DESLIGA LED ENTRADA
+      carroAtualNaEntrada = false; 
+    }
+  }
+
+  // LÓGICA DA SAÍDA
+  if (distSaida > 0 && distSaida < 50) {
+    if (!carroAtualNaSaida) {
+      cancelaSaida.write(90);      
+      Serial.print('S');           // LIGA LED SAÍDA (e desconta vaga)
+      carroAtualNaSaida = true;    
+    }
+  } 
+  else {
+    if (carroAtualNaSaida) {
+      delay(1000);                 
+      cancelaSaida.write(0);       
+      Serial.print('s');           // DESLIGA LED SAÍDA
+      carroAtualNaSaida = false;   
+    }
+  }
+  
+  delay(100); 
+}
